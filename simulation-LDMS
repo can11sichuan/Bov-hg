@@ -1,0 +1,69 @@
+
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE)
+library(data.table)
+setDTthreads(10)
+#snppeak<-fread("binary_allseq_sort_peakSNPlist_1.ped")
+snppeak<-fread(args[1])
+phenotype_df<-snppeak[,1:2]
+herit=c()
+herit_peak=c()
+herit_outpeak=c()
+df_effect=list()
+power_pq=args[5]
+power_w=args[6]
+lds_seg_df<-as.data.frame(fread(args[2]))
+for (iter in 1:100){
+    #iter=1
+    snppeak<-fread(paste0(args[3],iter,".ped"))
+    snppeak<-as.data.frame(snppeak)
+    snpoutpeak<-fread(paste0(args[4],iter,".ped"))
+    snpoutpeak<-as.data.frame(snpoutpeak)
+	snpfrq_peak<-read.table(paste0(args[3],iter,".frq"),header=T)
+    snpfrq_outpeak<-read.table(args[4],iter,".frq"),header=T)
+	beta_pq_var_peak<-(snpfrq_peak$MAF*(1-snpfrq_peak$MAF))^power_pq
+	beta_pq_var_outpeak=(snpfrq_outpeak$MAF*(1-snpfrq_outpeak$MAF))^power_pq
+	snppeak_count<-read.table(paste0(args[3],iter,"_count.frq.counts"),header=T)
+	snpoutpeak_count<-read.table(paste0(args[4],iter,"_count.frq.counts"),header=T)
+    snppeak_average=snppeak_count$C2/14762
+	snpoutpeak_average=snpoutpeak_count$C2/14762
+    pq_peak<-sqrt(2*snpfrq_peak$MAF*(1-snpfrq_peak$MAF))
+    pq_outpeak=sqrt(2*snpfrq_outpeak$MAF*(1-snpfrq_outpeak$MAF))
+    peak_average=matrix(rep(c(snppeak_average),each=14762),byrow=F,ncol=5000)
+    outpeak_average=matrix(rep(c(snpoutpeak_average),each=14762),byrow=F,ncol=5000)
+	w_peak<-merge(snpfrq_peak,lds_seg_df,by.x="SNP",by.y="SNP",all.x=TRUE)
+	w_peak<-w_peak[match(snpfrq_peak$SNP,w_peak$SNP),]
+	w_outpeak<-merge(snpfrq_outpeak,lds_seg_df,by.x="SNP",by.y="SNP",all.x=TRUE)
+	w_outpeak<-w_peak[match(snpfrq_outpeak$SNP,w_outpeak$SNP),]
+	beta_w_var_peak<-w_peak$ldscore_SNP^power_w
+	beta_w_var_outpeak<-w_outpeak$ldscore_SNP^power_w
+	beta_var_peak<-beta_w_var_peak*beta_pq_var_peak
+	beta_var_outpeak<-beta_w_var_outpeak*beta_pq_var_outpeak
+    effect_peak<-rnorm(5000, mean = 0, sd = sqrt(beta_var_peak))
+    effect_outpeak<-rnorm(5000, mean = 0, sd = sqrt(beta_var_outpeak))
+    #all(snppeak[,1:2]==snpoutpeak[,1:2])
+    line=1:5000
+    snppeak2<-snppeak[,line*2-1+6]+snppeak[,line*2+6]
+	snppeak2<-snppeak2-peak_average
+	snppeak2<-as.matrix(snppeak2) %*% diag(1/pq_peak)
+    snpoutpeak2<-snpoutpeak[,line*2-1+6]+snpoutpeak[,line*2+6]
+	snpoutpeak2<-snpoutpeak2-outpeak_average
+	snpoutpeak2<-as.matrix(snpoutpeak2) %*% diag(1/pq_outpeak)
+    simP_peak= as.matrix(snppeak2) %*% diag(effect_peak)
+    simP_outpeak= as.matrix(snpoutpeak2) %*% diag(effect_outpeak)
+    simP_peak=rowSums(simP_peak)
+    simP_outpeak=rowSums(simP_outpeak)
+    simP_outpeak=sqrt(var(simP_peak)/var(simP_outpeak))*simP_outpeak
+    residual<-rnorm(dim(snppeak)[1], mean = 0, sd = 1)*sd(simP_outpeak)*sqrt(2)
+    simP<-residual+simP_peak+simP_outpeak
+    herit_iter=1-var(residual)/var(simP)
+    herit_peak_iter=var(simP_peak)/var(simP)
+    herit_outpeak_iter=var(simP_outpeak)/var(simP)
+    herit=c(herit,herit_iter)
+    herit_peak=c(herit_peak,herit_peak_iter)
+    herit_outpeak=c(herit_outpeak,herit_outpeak_iter)
+    phenotype_df<-cbind(phenotype_df,simP)
+    df_effect[[iter]]<-c(effect_peak,effect_outpeak)
+}
+herit_df<-as.data.frame(cbind(herit,herit_peak,herit_outpeak))
+write.table(phenotype_df,file="pheno_peak_outpeak_simlation.txt",row.names=F,col.names=F,quote=F)

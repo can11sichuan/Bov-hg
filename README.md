@@ -15,4 +15,8 @@
 ### 2.7 prefix of ped file for variant in the OCR
 ***
 The vector inside the script, her_design is used to change the heritability of each category
+***
+# Genotype simulation
+## Please use this link 
+<https://github.com/medical-genomics-group/gmrm/tree/main/example>
 

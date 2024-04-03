@@ -5,7 +5,7 @@
 ### 1.3 prefix of ped file for variant in the annotation  
 ### 1.4 prefix of ped file for variant outside the annotation  
 
-## 2, the input file for simulation_ann
+## 2, the input file for simulation_Ann
 ### 2.1 the name of ped file  
 ### 2.2 prefix of ped file for variant in the CDS
 ### 2.3 prefix of ped file for variant in the IOR

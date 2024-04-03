@@ -1,0 +1,140 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE)
+library(data.table)
+setDTthreads(10)
+#snppeak<-fread("binary_allseq_sort_peakSNPlist_1.ped")
+snppeak<-fread(args[1])
+phenotype_df<-snppeak[,1:2]
+herit=c()
+herit_peak=c()
+herit_outpeak=c()
+df_effect=list()
+her_design=c(25,14,1,10,15,35) # CDS, Intron, UTR, Up_down, Intergenic, distal, proximal
+Nsnp_design=her_design*100
+
+for (iter in 1:100){
+    snpoutpeak_OCDS<-fread(args[2],iter,".ped"))
+    snpoutpeak_OCDS<-snpoutpeak_OCDS[,1:c(Nsnp_design[1]*2+6)]
+	snpoutpeak_OCDS<-as.data.frame(snpoutpeak_OCDS)
+    snpoutpeak_Ointron<-fread(paste0(args[3],iter,".ped"))
+    snpoutpeak_Ointron<-snpoutpeak_Ointron[,1:c(Nsnp_design[2]*2+6)]
+	snpoutpeak_Ointron<-as.data.frame(snpoutpeak_Ointron)
+    snpoutpeak_OUTR<-fread(paste0(args[4],iter,".ped"))
+    snpoutpeak_OUTR<-snpoutpeak_OUTR[,1:c(Nsnp_design[3]*2+6)]
+	snpoutpeak_OUTR<-as.data.frame(snpoutpeak_OUTR)
+    snpoutpeak_Oup_down_stream<-fread(paste0(args[5],iter,".ped"))
+    snpoutpeak_Oup_down_stream=snpoutpeak_Oup_down_stream[,1:c(Nsnp_design[4]*2+6)]
+    snpoutpeak_Oup_down_stream<-as.data.frame(snpoutpeak_Oup_down_stream)
+    snpoutpeak_Ointergenic<-fread(paste0(args[6],iter,".ped"))
+    snpoutpeak_Ointergenic=snpoutpeak_Ointergenic[,1:c(Nsnp_design[5]*2+6)]
+    snpoutpeak_Ointergenic<-as.data.frame(snpoutpeak_Ointergenic)
+    snppeak<-fread(paste0(args[7],iter,".ped"))
+    snppeak=snppeak[,1:c(Nsnp_design[6]*2+6)]
+    snppeak<-as.data.frame(snppeak)
+    snpfrq_outpeak_OCDS<-read.table(paste0(args[2],iter,".frq"),header=T)
+	snpfrq_outpeak_OCDS<-snpfrq_outpeak_OCDS[1:Nsnp_design[1],]
+    snpfrq_outpeak_Ointron<-read.table(paste0(args[3],iter,".frq"),header=T)
+	snpfrq_outpeak_Ointron<-snpfrq_outpeak_Ointron[1:Nsnp_design[2],]
+    snpfrq_outpeak_OUTR<-read.table(paste0(args[4],iter,".frq"),header=T)
+	snpfrq_outpeak_OUTR<-snpfrq_outpeak_OUTR[1:Nsnp_design[3],]
+    snpfrq_outpeak_Oup_down_stream<-read.table(paste0(args[5],iter,".frq"),header=T)
+	snpfrq_outpeak_Oup_down_stream<-snpfrq_outpeak_Oup_down_stream[1:Nsnp_design[4],]
+    snpfrq_outpeak_Ointergenic<-read.table(paste0(args[6],iter,".frq"),header=T)
+	snpfrq_outpeak_Ointergenic<-snpfrq_outpeak_Ointergenic[1:Nsnp_design[5],]
+    snpfrq_peak<-read.table(paste0(args[7],iter,".frq"),header=T)
+	snpfrq_peak<-snpfrq_peak[1:Nsnp_design[6],]
+    snpoutpeak_count_OCDS<-read.table(paste0(args[2],iter,"_count.frq.counts"),header=T)
+	snpoutpeak_count_OCDS=snpoutpeak_count_OCDS[1:Nsnp_design[1],]
+    snpoutpeak_count_Ointron<-read.table(paste0(args[3],iter,"_count.frq.counts"),header=T)
+	snpoutpeak_count_Ointron=snpoutpeak_count_Ointron[1:Nsnp_design[2],]
+    snpoutpeak_count_OUTR<-read.table(paste0(args[4],iter,"_count.frq.counts"),header=T)
+	snpoutpeak_count_OUTR=snpoutpeak_count_OUTR[1:Nsnp_design[3],]
+    snpoutpeak_count_Oup_down_stream<-read.table(paste0(args[5],iter,"_count.frq.counts"),header=T)
+	snpoutpeak_count_Oup_down_stream=snpoutpeak_count_Oup_down_stream[1:Nsnp_design[4],]
+    snpoutpeak_count_Ointergenic<-read.table(paste0(args[6],iter,"_count.frq.counts"),header=T)
+	snpoutpeak_count_Ointergenic=snpoutpeak_count_Ointergenic[1:Nsnp_design[5],]
+    snppeak_count<-read.table(paste0(args[7],iter,"_count.frq.counts"),header=T)
+	snppeak_count=snppeak_count[1:Nsnp_design[6],]
+
+    snpoutpeak_average_OCDS=snpoutpeak_count_OCDS$C2/14762
+    snpoutpeak_average_Ointron=snpoutpeak_count_Ointron$C2/14762
+    snpoutpeak_average_OUTR=snpoutpeak_count_OUTR$C2/14762
+    snpoutpeak_average_Oup_down_stream=snpoutpeak_count_Oup_down_stream$C2/14762
+    snpoutpeak_average_Ointergenic=snpoutpeak_count_Ointergenic$C2/14762
+    snppeak_average=snppeak_count$C2/14762
+    pq_outpeak_OCDS=sqrt(2*snpfrq_outpeak_OCDS$MAF*(1-snpfrq_outpeak_OCDS$MAF))
+    pq_outpeak_Ointron=sqrt(2*snpfrq_outpeak_Ointron$MAF*(1-snpfrq_outpeak_Ointron$MAF))
+    pq_outpeak_OUTR=sqrt(2*snpfrq_outpeak_OUTR$MAF*(1-snpfrq_outpeak_OUTR$MAF))
+    pq_outpeak_Oup_down_stream=sqrt(2*snpfrq_outpeak_Oup_down_stream$MAF*(1-snpfrq_outpeak_Oup_down_stream$MAF))
+    pq_outpeak_Ointergenic=sqrt(2*snpfrq_outpeak_Ointergenic$MAF*(1-snpfrq_outpeak_Ointergenic$MAF))
+    pq_peak<-sqrt(2*snpfrq_peak$MAF*(1-snpfrq_peak$MAF))
+    outpeak_average_OCDS=matrix(rep(c(snpoutpeak_average_OCDS),each=14762),byrow=F,ncol=Nsnp_design[1])
+    outpeak_average_Ointron=matrix(rep(c(snpoutpeak_average_Ointron),each=14762),byrow=F,ncol=Nsnp_design[2])
+    outpeak_average_OUTR=matrix(rep(c(snpoutpeak_average_OUTR),each=14762),byrow=F,ncol=Nsnp_design[3])
+    outpeak_average_Oup_down_stream=matrix(rep(c(snpoutpeak_average_Oup_down_stream),each=14762),byrow=F,ncol=Nsnp_design[4])
+    outpeak_average_Ointergenic=matrix(rep(c(snpoutpeak_average_Ointergenic),each=14762),byrow=F,ncol=Nsnp_design[5])
+    peak_average=matrix(rep(c(snppeak_average),each=14762),byrow=F,ncol=Nsnp_design[6])
+    effect_outpeak_OCDS<-rnorm(Nsnp_design[1], mean = 0, sd = 1)
+	effect_outpeak_Ointron<-rnorm(Nsnp_design[2], mean = 0, sd = 1)
+    effect_outpeak_OUTR<-rnorm(Nsnp_design[3], mean = 0, sd = 1)
+	effect_outpeak_Oup_down_stream<-rnorm(Nsnp_design[4], mean = 0, sd = 1)
+	effect_outpeak_Ointergenic<-rnorm(Nsnp_design[5], mean = 0, sd = 1)
+    effect_peak<-rnorm(Nsnp_design[6], mean = 0, sd = 1)
+    snpoutpeak2_OCDS<-snpoutpeak_OCDS[,(1:Nsnp_design[1])*2-1+6]+snpoutpeak_OCDS[,(1:Nsnp_design[1])*2+6]
+    snpoutpeak2_OCDS<-snpoutpeak2_OCDS-outpeak_average_OCDS
+    snpoutpeak2_OCDS<-as.matrix(snpoutpeak2_OCDS) %*% diag(1/pq_outpeak_OCDS)
+	snpoutpeak2_Ointron<-snpoutpeak_Ointron[,(1:Nsnp_design[2])*2-1+6]+snpoutpeak_Ointron[,(1:Nsnp_design[2])*2+6]
+	snpoutpeak2_Ointron<-snpoutpeak2_Ointron-outpeak_average_Ointron
+	snpoutpeak2_Ointron<-as.matrix(snpoutpeak2_Ointron) %*% diag(1/pq_outpeak_Ointron)
+    snpoutpeak2_OUTR<-snpoutpeak_OUTR[,(1:Nsnp_design[3])*2-1+6]+snpoutpeak_OUTR[,(1:Nsnp_design[3])*2+6]
+    snpoutpeak2_OUTR<-snpoutpeak2_OUTR-outpeak_average_OUTR
+    snpoutpeak2_OUTR<-as.matrix(snpoutpeak2_OUTR) %*% diag(1/pq_outpeak_OUTR)
+	snpoutpeak2_Oup_down_stream<-snpoutpeak_Oup_down_stream[,(1:Nsnp_design[4])*2-1+6]+snpoutpeak_Oup_down_stream[,(1:Nsnp_design[4])*2+6]
+	snpoutpeak2_Oup_down_stream<-snpoutpeak2_Oup_down_stream-outpeak_average_Oup_down_stream
+	snpoutpeak2_Oup_down_stream<-as.matrix(snpoutpeak2_Oup_down_stream) %*% diag(1/pq_outpeak_Oup_down_stream)
+
+	snpoutpeak2_Ointergenic<-snpoutpeak_Ointergenic[,(1:Nsnp_design[5])*2-1+6]+snpoutpeak_Ointergenic[,(1:Nsnp_design[5])*2+6]
+	snpoutpeak2_Ointergenic<-snpoutpeak2_Ointergenic-outpeak_average_Ointergenic
+	snpoutpeak2_Ointergenic<-as.matrix(snpoutpeak2_Ointergenic) %*% diag(1/pq_outpeak_Ointergenic)
+
+	snpfrq_peak<-snppeak[,(1:Nsnp_design[6])*2-1+6]+snppeak[,(1:Nsnp_design[6])*2+6]
+    snpfrq_peak<-snpfrq_peak-peak_average_proximal
+    snpfrq_peak<-as.matrix(snpfrq_peak) %*% diag(1/pq_peak_proximal)
+
+    simP_outpeak_OCDS= as.matrix(snpoutpeak2_OCDS) %*% diag(effect_outpeak_OCDS)
+    simP_outpeak_Ointron= as.matrix(snpoutpeak2_Ointron) %*% diag(effect_outpeak_Ointron)
+    simP_outpeak_OUTR= as.matrix(snpoutpeak2_OUTR) %*% diag(effect_outpeak_OUTR)
+    simP_outpeak_Oup_down_stream= as.matrix(snpoutpeak2_Oup_down_stream) %*% diag(effect_outpeak_Oup_down_stream)
+    simP_outpeak_Ointergenic= as.matrix(snpoutpeak2_Ointergenic) %*% diag(effect_outpeak_Ointergenic)
+    simP_peak= as.matrix(snpfrq_peak) %*% diag(effect_peak_proximal)
+
+    simP_outpeak_OCDS=rowSums(simP_outpeak_OCDS)
+	simP_outpeak_Ointron=rowSums(simP_outpeak_Ointron)
+	simP_outpeak_OUTR=rowSums(simP_outpeak_OUTR)
+	simP_outpeak_Oup_down_stream=rowSums(simP_outpeak_Oup_down_stream)
+    simP_outpeak_Ointergenic=rowSums(simP_outpeak_Ointergenic)
+    snpfrq_peak=rowSums(snpfrq_peak)
+
+	simP_outpeak_OCDS=sqrt((her_design[6]/her_design[1])/(var(snpfrq_peak)/var(simP_outpeak_OCDS)))*simP_outpeak_OCDS
+	simP_outpeak_Ointron=sqrt((her_design[6]/her_design[2])/(var(snpfrq_peak)/var(simP_outpeak_Ointron)))*simP_outpeak_Ointron
+	simP_outpeak_OUTR=sqrt((her_design[6]/her_design[3])/(var(snpfrq_peak)/var(simP_outpeak_OUTR)))*simP_outpeak_OUTR
+	simP_outpeak_Oup_down_stream=sqrt((her_design[6]/her_design[4])/(var(snpfrq_peak)/var(simP_outpeak_Oup_down_stream)))*simP_outpeak_Oup_down_stream
+	simP_outpeak_Ointergenic=sqrt((her_design[6]/her_design[5])/(var(snpfrq_peak)/var(simP_outpeak_Ointergenic)))*simP_outpeak_Ointergenic
+
+    simP_peak_total=snpfrq_peak
+    simP_outpeak_total=simP_outpeak_OCDS+simP_outpeak_Ointron+simP_outpeak_OUTR+simP_outpeak_Oup_down_stream+simP_outpeak_Ointergenic
+	
+    simP_her=simP_peak_total+simP_outpeak_total
+	residual<-rnorm(dim(snppeak)[1], mean = 0, sd = 1)*sd(simP_her)*sqrt(3/7)
+    simP<-residual+simP_peak_total+simP_outpeak_total
+    herit_iter=1-var(residual)/var(simP)
+    herit_peak_iter=var(simP_peak_total)/var(simP)
+    herit_outpeak_iter=var(simP_outpeak_total)/var(simP)
+    herit=c(herit,herit_iter)
+    herit_peak=c(herit_peak,herit_peak_iter)
+    herit_outpeak=c(herit_outpeak,herit_outpeak_iter)
+    phenotype_df<-cbind(phenotype_df,simP)
+    df_effect[[iter]]<-c(effect_outpeak_OCDS,effect_outpeak_Ointron,effect_outpeak_OUTR,effect_outpeak_Oup_down_stream,effect_outpeak_Ointergenic,effect_peak_proximal,effect_peak_distal)
+}
+herit_df<-as.data.frame(cbind(herit,herit_peak,herit_outpeak))
+write.table(phenotype_df,file="pheno_peak_outpeak_simlation.txt",row.names=F,col.names=F,quote=F)
